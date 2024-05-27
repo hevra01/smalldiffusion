@@ -18,6 +18,11 @@ def get_sigma_embeds(batches, sigma):
 
 class ModelMixin:
     def rand_input(self, batchsize):
+        # for the sake of reproducibility.
+        # in DDMI, given the initial noise, it should always give the same generation.
+        # in DDPM, given the initial noise, it can give different outputs 
+        seed = 42
+        torch.manual_seed(seed)
         assert hasattr(self, 'input_dims'), 'Model must have "input_dims" attribute!'
         return torch.randn((batchsize,) + self.input_dims)
 
@@ -29,10 +34,18 @@ class TimeInputMLP(nn.Module, ModelMixin):
         super().__init__()
         layers = []
         for in_dim, out_dim in pairwise((dim + 2,) + hidden_dims):
+            
+            # here, we use extend because we are concatenating 2
+            # lists. we have a list because we have the linear layer
+            # and activation together.
             layers.extend([nn.Linear(in_dim, out_dim), nn.GELU()])
+        
+        # we don't append the activation here.
         layers.append(nn.Linear(hidden_dims[-1], dim))
 
+        # self.net is defined as a sequential container of the constructed layers.
         self.net = nn.Sequential(*layers)
+
         self.input_dims = (dim,)
 
     def forward(self, x, sigma):

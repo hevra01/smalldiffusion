@@ -27,6 +27,15 @@ class Schedule:
           - Spacing is "trailing" as in Table 2 of https://arxiv.org/abs/2305.08891
           - Includes initial and final sigmas
             i.e. len(schedule.sample_sigmas(steps)) == steps + 1
+
+        High Noise at the Beginning:
+        Initial large steps in noise reduction.
+
+        Gradually Reducing:
+        Smaller steps in noise reduction towards the end.
+
+        e.g. sigmas = [20, 15, 10, 8, 6, 4, 2, 0]
+
         '''
         indices = list((len(self) * (1 - np.arange(0, steps)/steps))
                        .round().astype(np.int64) - 1)
@@ -109,7 +118,6 @@ def training_loop(loader     : DataLoader,
             # The model is given the noisy data points (x0 + sigma * eps) and the sigma values.
             # The model's task is to predict the noise (eps_hat).
             eps_hat = model(x0 + sigma * eps, sigma)
-            print("eps_hat.shape: ", eps_hat.shape)
 
             # The loss is computed between the predicted noise (eps_hat) and the actual noise (eps).
             loss = nn.MSELoss()(eps_hat, eps)
@@ -129,12 +137,24 @@ def samples(model      : nn.Module,
             xt         : Optional[torch.FloatTensor] = None,
             accelerator: Optional[Accelerator] = None,
             batchsize  : int = 1):
+    
+    # xt is random noise
     accelerator = accelerator or Accelerator()
     if xt is None:
         xt = model.rand_input(batchsize).to(accelerator.device) * sigmas[0]
     else:
         batchsize = xt.shape[0]
     eps = None
+
+    # Get a bunch of (depending on batch size) pure noise and clean
+    # out the noise in N steps. The model has learned the distribution
+    # in the training data, hence, we hope that from noise it will arrive to
+    # a similar distribution of the data. 
+
+    # Iterative Denoising:
+    # The model iteratively refines this noise tensor. At each step, it uses the predicted noise 
+    # (learned during training) to progressively remove noise from the tensor.
+    # Each iteration moves the tensor closer to a data point that resembles the original training data.
     for i, (sig, sig_prev) in enumerate(pairwise(sigmas)):
         eps, eps_prev = model(xt, sig.to(xt)), eps
         eps_av = eps * gam + eps_prev * (1-gam)  if i > 0 else eps
