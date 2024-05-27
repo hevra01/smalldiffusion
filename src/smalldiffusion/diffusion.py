@@ -77,6 +77,9 @@ def generate_train_sample(x0: torch.FloatTensor, schedule: Schedule):
     sigma = schedule.sample_batch(x0)
     while len(sigma.shape) < len(x0.shape):
         sigma = sigma.unsqueeze(-1)
+    
+    # This line generates a tensor of noise values (eps) with the same shape as x0, where each element is 
+    # independently sampled from a standard normal distribution N(0,1).
     eps = torch.randn_like(x0)
     return sigma, eps
 
@@ -99,8 +102,16 @@ def training_loop(loader     : DataLoader,
     for _ in (pbar := tqdm(range(epochs))):
         for x0 in loader:
             optimizer.zero_grad()
+            # Generates a batch of sigma values (sigma) and corresponding noise (eps).
+            # Each sigma value is used to scale the noise eps.
             sigma, eps = generate_train_sample(x0, schedule)
+
+            # The model is given the noisy data points (x0 + sigma * eps) and the sigma values.
+            # The model's task is to predict the noise (eps_hat).
             eps_hat = model(x0 + sigma * eps, sigma)
+            print("eps_hat.shape: ", eps_hat.shape)
+
+            # The loss is computed between the predicted noise (eps_hat) and the actual noise (eps).
             loss = nn.MSELoss()(eps_hat, eps)
             yield SimpleNamespace(**locals()) # For extracting training statistics
             accelerator.backward(loss)
