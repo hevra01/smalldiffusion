@@ -12,6 +12,24 @@ class Swissroll(Dataset):
 
     def __getitem__(self, i):
         return self.vals[i]
+    
+
+class FibonacciDataset(Dataset):
+    def __init__(self, N):
+        self.vals = self.generate_fibonacci(N)
+    
+    def generate_fibonacci(self, N):
+        fibs = [0, 1]
+        for i in range(2, N):
+            fibs.append(fibs[-1] + fibs[-2])
+        return torch.tensor(fibs, dtype=torch.float32)
+    
+    def __len__(self):
+        return len(self.vals)
+    
+    def __getitem__(self, i):
+        return self.vals[i]
+    
 
 class DatasaurusDozen(Dataset):
     def __init__(self, csv_file, dataset, enlarge_factor=15, delimiter='\t', scale=50, offset=50):
