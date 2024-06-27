@@ -155,7 +155,11 @@ def samples(model      : nn.Module,
     # The model iteratively refines this noise tensor. At each step, it uses the predicted noise 
     # (learned during training) to progressively remove noise from the tensor.
     # Each iteration moves the tensor closer to a data point that resembles the original training data.
+    print("pairwise(sigmas): ", pairwise(sigmas))
+    print("testttt")
+    print("enumerate(pairwise(sigmas)): ", list(enumerate(pairwise(sigmas))))
     for i, (sig, sig_prev) in enumerate(pairwise(sigmas)):
+        print(sig, sig_prev)
         eps, eps_prev = model(xt, sig.to(xt)), eps
         eps_av = eps * gam + eps_prev * (1-gam)  if i > 0 else eps
         sig_p = (sig_prev/sig**mu)**(1/(1-mu)) # sig_prev == sig**mu sig_p**(1-mu)
