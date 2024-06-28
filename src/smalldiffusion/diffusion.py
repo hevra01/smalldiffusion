@@ -114,11 +114,11 @@ def training_loop(loader     : DataLoader,
             # Generates a batch of sigma values (sigma) and corresponding noise (eps).
             # Each sigma value is used to scale the noise eps.
             sigma, eps = generate_train_sample(x0, schedule)
-
+            
             # The model is given the noisy data points (x0 + sigma * eps) and the sigma values.
             # The model's task is to predict the noise (eps_hat).
             eps_hat = model(x0 + sigma * eps, sigma)
-
+            
             # The loss is computed between the predicted noise (eps_hat) and the actual noise (eps).
             loss = nn.MSELoss()(eps_hat, eps)
             yield SimpleNamespace(**locals()) # For extracting training statistics
@@ -156,7 +156,6 @@ def samples(model      : nn.Module,
     # (learned during training) to progressively remove noise from the tensor.
     # Each iteration moves the tensor closer to a data point that resembles the original training data.
     print("pairwise(sigmas): ", pairwise(sigmas))
-    print("testttt")
     print("enumerate(pairwise(sigmas)): ", list(enumerate(pairwise(sigmas))))
     for i, (sig, sig_prev) in enumerate(pairwise(sigmas)):
         print(sig, sig_prev)
