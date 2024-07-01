@@ -5,13 +5,35 @@ from torch.utils.data import Dataset
 class Swissroll(Dataset):
     def __init__(self, tmin, tmax, N):
         t = tmin + torch.linspace(0, 1, N) * tmax
-        self.vals = torch.stack([t*torch.cos(t)/tmax, t*torch.sin(t)/tmax]).T
+        self.vals = torch.stack([t * torch.cos(t) / tmax, t * torch.sin(t) / tmax]).T  # Scale by 25
 
     def __len__(self):
         return len(self.vals)
 
     def __getitem__(self, i):
         return self.vals[i]
+    
+class Swissroll_2(Dataset):
+    def __init__(self, tmin, tmax, N):
+        t = tmin + torch.linspace(0, 1, N) * tmax
+        x = t * torch.cos(t)
+        y = t * torch.sin(t)
+        vals = torch.stack([x, y]).T
+
+        # Normalize to [-1, 1]
+        vals_min = vals.min(dim=0).values
+        vals_max = vals.max(dim=0).values
+        vals = 2 * (vals - vals_min) / (vals_max - vals_min) - 1
+
+        # Scale to [-25, 25]
+        self.vals = vals * 25
+
+    def __len__(self):
+        return len(self.vals)
+
+    def __getitem__(self, i):
+        return self.vals[i]
+
     
 
 class FibonacciDataset(Dataset):

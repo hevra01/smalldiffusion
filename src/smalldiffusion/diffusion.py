@@ -39,6 +39,8 @@ class Schedule:
         '''
         indices = list((len(self) * (1 - np.arange(0, steps)/steps))
                        .round().astype(np.int64) - 1)
+        
+        print("indices", indices)
         return self[indices + [0]]
 
     def sample_batch(self, x0: torch.FloatTensor) -> torch.FloatTensor:
@@ -114,7 +116,7 @@ def training_loop(loader     : DataLoader,
             # Generates a batch of sigma values (sigma) and corresponding noise (eps).
             # Each sigma value is used to scale the noise eps.
             sigma, eps = generate_train_sample(x0, schedule)
-            
+            print("sigma", sigma)
             # The model is given the noisy data points (x0 + sigma * eps) and the sigma values.
             # The model's task is to predict the noise (eps_hat).
             eps_hat = model(x0 + sigma * eps, sigma)
@@ -124,6 +126,7 @@ def training_loop(loader     : DataLoader,
             yield SimpleNamespace(**locals()) # For extracting training statistics
             accelerator.backward(loss)
             optimizer.step()
+        break
 
 # Generalizes most commonly-used samplers:
 #   DDPM       : gam=1, mu=0.5
@@ -148,12 +151,16 @@ def samples(model      : nn.Module,
     """
     
     # xt is random noise
+    print("sigmas", sigmas)
     accelerator = accelerator or Accelerator()
     if xt is None:
         xt = model.rand_input(batchsize).to(accelerator.device) * sigmas[0]
     else:
         batchsize = xt.shape[0]
     eps = None
+    print("sigmas[0]", sigmas[0])
+    print("xt", xt.shape)
+    print(xt)
 
     # Get a bunch of (depending on batch size) pure noise and clean
     # out the noise in N steps. The model has learned the distribution

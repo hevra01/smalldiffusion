@@ -7,12 +7,8 @@ import torch
 def animate_diffusion(samples, filename="", save=False):
     fig, ax = plt.subplots()
     scat = ax.scatter([], [])
-    print("len(samples)", len(samples))
 
-    # initialize the min and max to be min and max of the first sample. 
-    # note that samples represent the different denoising step
-    # furthermore, in each sample, there are several other data points.
-    # Concatenate all samples along a new dimension to aggregate in one go
+    # Concatenate all samples along a new dimension 
     all_samples = torch.cat(samples, dim=0)
 
     # Calculate global min and max for each dimension separately
@@ -41,6 +37,31 @@ def animate_diffusion(samples, filename="", save=False):
         data -= np.array([local_min_x, local_min_y])
         data *= (np.array([max_x, max_y]) - np.array([min_x, min_y])) / (np.array([local_max_x, local_max_y]) - np.array([local_min_x, local_min_y]))
         data += np.array([min_x, min_y])
+
+        scat.set_offsets(data)
+        return scat,
+
+    anim = FuncAnimation(fig, update, frames=len(samples), init_func=init, blit=True)
+
+    if save:
+        anim.save(filename + ".gif", writer='pillow')
+     
+    # Display the animation in the notebook
+    return HTML(anim.to_jshtml())
+
+
+def animate_diffusion_2(samples, filename="", save=False):
+    fig, ax = plt.subplots()
+    scat = ax.scatter([], [])
+
+        
+    def init():
+        ax.set_xlim(-25, 25)
+        ax.set_ylim(-25, 25)
+        return scat,
+
+    def update(frame):
+        data = samples[frame].cpu()
 
         scat.set_offsets(data)
         return scat,
