@@ -7,20 +7,19 @@ import torch
 def animate_diffusion(samples, filename="", save=False):
     fig, ax = plt.subplots()
     scat = ax.scatter([], [])
-    max_x = torch.max(samples[0][:, 0])
-    max_y = torch.max(samples[0][:, 1])
-    min_x = torch.min(samples[0][:, 0])
-    min_y = torch.min(samples[0][:, 1])
+    print("len(samples)", len(samples))
 
-    for sample in samples:
-        if torch.max(sample[:, 0]) > max_x:
-            max_x = torch.max(sample[:, 0])
-        if torch.max(sample[:, 1]) > max_y:
-            max_y = torch.max(sample[:, 1])
-        if torch.min(sample[:, 0]) < min_x:
-            min_x = torch.min(sample[:, 0])
-        if torch.min(sample[:, 1]) < min_y:
-            min_y = torch.min(sample[:, 1])
+    # initialize the min and max to be min and max of the first sample. 
+    # note that samples represent the different denoising step
+    # furthermore, in each sample, there are several other data points.
+    # Concatenate all samples along a new dimension to aggregate in one go
+    all_samples = torch.cat(samples, dim=0)
+
+    # Calculate global min and max for each dimension separately
+    min_x = torch.min(all_samples[:, 0])
+    max_x = torch.max(all_samples[:, 0])
+    min_y = torch.min(all_samples[:, 1])
+    max_y = torch.max(all_samples[:, 1])
 
     min_x = min_x.cpu()
     min_y = min_y.cpu()

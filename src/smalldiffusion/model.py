@@ -52,6 +52,7 @@ class TimeInputMLP(nn.Module, ModelMixin):
         # x     shape: b x dim
         # sigma shape: b x 1 or scalar
         sigma_embeds = get_sigma_embeds(x.shape[0], sigma.squeeze()) # shape: b x 2
+        
         nn_input = torch.cat([x, sigma_embeds], dim=1)               # shape: b x (dim + 2)
         return self.net(nn_input)
 
