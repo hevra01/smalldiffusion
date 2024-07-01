@@ -138,6 +138,15 @@ def samples(model      : nn.Module,
             accelerator: Optional[Accelerator] = None,
             batchsize  : int = 1):
     
+
+    """
+    Given noise, this function will iteratively remove the noise and bring the data
+    to the learned distribution. 
+
+    The noise can either be given to the function or the function can create
+    random noise.
+    """
+    
     # xt is random noise
     accelerator = accelerator or Accelerator()
     if xt is None:
