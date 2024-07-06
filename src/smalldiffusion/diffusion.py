@@ -116,7 +116,7 @@ def training_loop(loader     : DataLoader,
             # Generates a batch of sigma values (sigma) and corresponding noise (eps).
             # Each sigma value is used to scale the noise eps.
             sigma, eps = generate_train_sample(x0, schedule)
-            print("sigma", sigma)
+    
             # The model is given the noisy data points (x0 + sigma * eps) and the sigma values.
             # The model's task is to predict the noise (eps_hat).
             eps_hat = model(x0 + sigma * eps, sigma)
@@ -126,7 +126,6 @@ def training_loop(loader     : DataLoader,
             yield SimpleNamespace(**locals()) # For extracting training statistics
             accelerator.backward(loss)
             optimizer.step()
-        break
 
 # Generalizes most commonly-used samplers:
 #   DDPM       : gam=1, mu=0.5
@@ -151,16 +150,22 @@ def samples(model      : nn.Module,
     """
     
     # xt is random noise
-    print("sigmas", sigmas)
+    #print("sigmas", sigmas)
     accelerator = accelerator or Accelerator()
     if xt is None:
         xt = model.rand_input(batchsize).to(accelerator.device) * sigmas[0]
+        #print("xt", xt[:10]) we get the same result here 
     else:
         batchsize = xt.shape[0]
     eps = None
-    print("sigmas[0]", sigmas[0])
-    print("xt", xt.shape)
-    print(xt)
+
+    #print("sigmas[0]", sigmas[0])
+    #print("xt", xt.shape)
+    #print(xt)
+
+    # Yield the initial noise before any updates.
+    # this wasn't here in the original code
+    yield xt
 
     # Get a bunch of (depending on batch size) pure noise and clean
     # out the noise in N steps. The model has learned the distribution
@@ -177,4 +182,6 @@ def samples(model      : nn.Module,
         sig_p = (sig_prev/sig**mu)**(1/(1-mu)) # sig_prev == sig**mu sig_p**(1-mu)
         eta = (sig_prev**2 - sig_p**2).sqrt()
         xt = xt - (sig - sig_p) * eps_av + eta * model.rand_input(batchsize).to(xt)
+        
+        # Yield the noise after each update
         yield xt
