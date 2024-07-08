@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 class Swissroll(Dataset):
     def __init__(self, tmin, tmax, N):
         t = tmin + torch.linspace(0, 1, N) * tmax
-        self.vals = torch.stack([t * torch.cos(t) / tmax, t * torch.sin(t) / tmax]).T  # Scale by 25
+        self.vals = torch.stack([t * torch.cos(t) / tmax, t * torch.sin(t) / tmax]).T 
 
     def __len__(self):
         return len(self.vals)
