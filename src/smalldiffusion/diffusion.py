@@ -46,6 +46,11 @@ class Schedule:
         '''Called during training to get a batch of randomly sampled sigma values
         '''
         batchsize = x0.shape[0]
+
+        # generates "batchsize" number of random integers max value of len(self), which will be used
+        # as an index to self.sigmas.
+        # e.g. is self.sigmas has values from [0.005, 10], then we will randomly
+        # sample "batchsize" values from here.
         return self[torch.randint(len(self), (batchsize,))].to(x0)
 
 def sigmas_from_betas(betas: torch.FloatTensor):
@@ -85,6 +90,10 @@ class ScheduleCosine(Schedule):
 #   sigma: uniformly sampled from schedule, with shape Bx1x..x1 for broadcasting
 def generate_train_sample(x0: torch.FloatTensor, schedule: Schedule):
     sigma = schedule.sample_batch(x0)
+    
+    # check the dimensionality of the data.
+    # if it is larger than sigma, then unsqueeze it so that
+    # all the dimensions get the sigma. 
     while len(sigma.shape) < len(x0.shape):
         sigma = sigma.unsqueeze(-1)
     
@@ -227,5 +236,5 @@ def DDIM_inversion(model      : nn.Module,
         eps_av = eps * gam + eps_prev * (1-gam)  if i > 0 else eps
         sig_p = (sig_prev/sig**mu)**(1/(1-mu)) # sig_prev == sig**mu sig_p**(1-mu)
         eta = (sig_prev**2 - sig_p**2).sqrt()
-        xt = xt + (sig - sig_p) * eps_av + eta * model.rand_input(batchsize).to(xt)
+        xt = xt - (sig - sig_p) * eps_av + eta * model.rand_input(batchsize).to(xt)
         yield xt
