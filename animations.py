@@ -6,7 +6,7 @@ import torch
 
 def animate_diffusion(samples, filename="", save=False):
     fig, ax = plt.subplots()
-    scat = ax.scatter([], [])
+    scat = ax.scatter([], [], marker='.')
 
     # Concatenate all samples along a new dimension 
     all_samples = torch.cat(samples, dim=0)
@@ -52,7 +52,7 @@ def animate_diffusion(samples, filename="", save=False):
 
 def animate_diffusion_2(samples, filename="", save=False):
     fig, ax = plt.subplots()
-    scat = ax.scatter([], [])
+    scat = ax.scatter([], [], marker='.')
 
         
     def init():
