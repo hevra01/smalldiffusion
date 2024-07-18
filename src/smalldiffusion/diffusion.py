@@ -40,13 +40,17 @@ class Schedule:
         indices = list((len(self) * (1 - np.arange(0, steps)/steps))
                        .round().astype(np.int64) - 1)
         
-        print("indices", indices)
         return self[indices + [0]]
 
     def sample_batch(self, x0: torch.FloatTensor) -> torch.FloatTensor:
         '''Called during training to get a batch of randomly sampled sigma values
         '''
         batchsize = x0.shape[0]
+
+        # generates "batchsize" number of random integers max value of len(self), which will be used
+        # as an index to self.sigmas.
+        # e.g. is self.sigmas has values from [0.005, 10], then we will randomly
+        # sample "batchsize" values from here.
         return self[torch.randint(len(self), (batchsize,))].to(x0)
 
 def sigmas_from_betas(betas: torch.FloatTensor):
@@ -86,6 +90,10 @@ class ScheduleCosine(Schedule):
 #   sigma: uniformly sampled from schedule, with shape Bx1x..x1 for broadcasting
 def generate_train_sample(x0: torch.FloatTensor, schedule: Schedule):
     sigma = schedule.sample_batch(x0)
+    
+    # check the dimensionality of the data.
+    # if it is larger than sigma, then unsqueeze it so that
+    # all the dimensions get the sigma. 
     while len(sigma.shape) < len(x0.shape):
         sigma = sigma.unsqueeze(-1)
     
@@ -181,4 +189,49 @@ def samples(model      : nn.Module,
         xt = xt - (sig - sig_p) * eps_av + eta * model.rand_input(batchsize).to(xt)
         
         # Yield the noise after each update
+        yield xt
+
+@torch.no_grad()
+def DDIM_inversion(model      : nn.Module,
+            sigmas     : torch.FloatTensor, # Iterable with N+1 values for N sampling steps
+            xt         : torch.FloatTensor,
+            gam        : float = 1.,        # Suggested to use gam >= 1
+            mu         : float = 0.,        # Requires mu in [0, 1)
+            accelerator: Optional[Accelerator] = None,
+            batchsize  : int = 1):
+    
+
+    """
+    Given noise, this function will iteratively remove the noise and bring the data
+    to the learned distribution. 
+
+    The noise can either be given to the function or the function can create
+    random noise.
+    """
+    
+    # xt is random noise
+    accelerator = accelerator or Accelerator()
+    if xt is None:
+        xt = model.rand_input(batchsize).to(accelerator.device) * sigmas[0]
+    else:
+        batchsize = xt.shape[0]
+    eps = None
+
+    yield xt
+
+    # Get a bunch of (depending on batch size) pure noise and clean
+    # out the noise in N steps. The model has learned the distribution
+    # in the training data, hence, we hope that from noise it will arrive to
+    # a similar distribution of the data. 
+
+    # Iterative Denoising:
+    # The model iteratively refines this noise tensor. At each step, it uses the predicted noise 
+    # (learned during training) to progressively remove noise from the tensor.
+    # Each iteration moves the tensor closer to a data point that resembles the original training data.
+    for i, (sig, sig_prev) in enumerate(pairwise(sigmas)):
+        eps, eps_prev = model(xt, sig.to(xt)), eps
+        eps_av = eps * gam + eps_prev * (1-gam)  if i > 0 else eps
+        sig_p = (sig_prev/sig**mu)**(1/(1-mu)) # sig_prev == sig**mu sig_p**(1-mu)
+        eta = (sig_prev**2 - sig_p**2).sqrt()
+        xt = xt - (sig - sig_p) * eps_av + eta * model.rand_input(batchsize).to(xt)
         yield xt
