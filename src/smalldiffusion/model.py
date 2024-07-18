@@ -29,31 +29,33 @@ class ModelMixin:
 
 ## Simple MLP for toy examples
 
-class TimeInputMLP(nn.Module, ModelMixin):
-    def __init__(self, dim=2, hidden_dims=(16,128,256,128,16)):
+class TimeInputMLP(nn.Module):
+    def __init__(self, dim=2, hidden_dims=(16, 128, 256, 128, 16), cond_dim: Optional[int] = 0):
         super().__init__()
+        self.cond_dim = cond_dim
+        input_dim = dim + 2 + cond_dim  # Adjust input dimension based on condition dimension
+
         layers = []
-        for in_dim, out_dim in pairwise((dim + 2,) + hidden_dims):
-            
-            # here, we use extend because we are concatenating 2
-            # lists. we have a list because we have the linear layer
-            # and activation together.
+        for in_dim, out_dim in pairwise((input_dim,) + hidden_dims):
             layers.extend([nn.Linear(in_dim, out_dim), nn.GELU()])
         
-        # we don't append the activation here.
         layers.append(nn.Linear(hidden_dims[-1], dim))
-
-        # self.net is defined as a sequential container of the constructed layers.
         self.net = nn.Sequential(*layers)
-
         self.input_dims = (dim,)
 
-    def forward(self, x, sigma):
-        # x     shape: b x dim
-        # sigma shape: b x 1 or scalar
-        sigma_embeds = get_sigma_embeds(x.shape[0], sigma.squeeze()) # shape: b x 2
+        if cond_dim > 0:
+            self.condition_embed = nn.Linear(cond_dim, cond_dim)  # Embedding layer for condition
+
+    def forward(self, x, sigma, y=None):
+        sigma_embeds = get_sigma_embeds(x.shape[0], sigma.squeeze())  # shape: b x 2
+        nn_input = torch.cat([x, sigma_embeds], dim=1)  # shape: b x (dim + 2)
         
-        nn_input = torch.cat([x, sigma_embeds], dim=1)               # shape: b x (dim + 2)
+        if y is not None:
+            if y.shape[1] != self.cond_dim:
+                raise ValueError(f"Condition dimension mismatch. Expected: {self.cond_dim}, Got: {y.shape[1]}")
+            y_embeds = self.condition_embed(y)  # Embed the condition
+            nn_input = torch.cat([nn_input, y_embeds], dim=1)  # Concatenate condition embedding
+        
         return self.net(nn_input)
 
 

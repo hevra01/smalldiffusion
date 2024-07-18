@@ -159,9 +159,6 @@ def samples(model      : nn.Module,
         batchsize = xt.shape[0]
     eps = None
 
-    #print("sigmas[0]", sigmas[0])
-    #print("xt", xt.shape)
-    #print(xt)
 
     # Yield the initial noise before any updates.
     # this wasn't here in the original code
@@ -177,7 +174,6 @@ def samples(model      : nn.Module,
     # (learned during training) to progressively remove noise from the tensor.
     # Each iteration moves the tensor closer to a data point that resembles the original training data.
     for i, (sig, sig_prev) in enumerate(pairwise(sigmas)):
-        print(xt)
         eps, eps_prev = model(xt, sig.to(xt)), eps
         eps_av = eps * gam + eps_prev * (1-gam)  if i > 0 else eps
         sig_p = (sig_prev/sig**mu)**(1/(1-mu)) # sig_prev == sig**mu sig_p**(1-mu)
